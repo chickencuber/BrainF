@@ -97,11 +97,6 @@ macro_rules! arguments {
     };
 }
 
-arguments!{
-    Data,
-    "brainf [file.bf]",
-    file: PathBuf => 1,
-}
 
 #[derive(Debug)]
 enum TokenType {
@@ -140,6 +135,69 @@ fn helper(tokenizer: &mut Tokenizer, tokens: &mut Vec<Token>, token: TokenType, 
         }
     }
     tokens.push(token);
+}
+
+fn interpret(tokens: Vec<Token>) {
+    let mut tape = Tape::new();
+    let mut i = 0;
+    while i < tokens.len() {
+        let token = &tokens[i];
+        match token.token_type {
+            TokenType::JZ => {
+                if tape.get() == 0 {
+                    i = token.value as usize; 
+                }
+            },
+            TokenType::NZ => {
+                if tape.get() != 0 {
+                    i = token.value as usize;
+                }
+            },
+            TokenType::Out => {
+                print!("{}",  tape.get() as char);
+            },
+            TokenType::In => {
+                let mut s = String::new();
+                println!("");
+                stdin().read_line(&mut s).expect("Did not enter a correct string");
+                let c = s.chars().collect::<Vec<char>>()[0];
+                tape.write(c as u8); 
+            },
+            TokenType::Shift => {
+                if token.value < 0 {
+                    tape.ls(token.value.abs() as usize);
+                } else {
+                    tape.rs(token.value as usize);
+                }
+            },
+            TokenType::Math => {
+                let sub = token.value < 0;
+                let value = token.value.abs();
+                let amount = (value as f32 / 255.0).floor() as i32;
+                for _ in 0..amount {
+                    if sub {
+                        tape.sub(255);
+                    } else {
+                        tape.add(255);
+                    }
+                }
+                if sub {
+                    tape.sub((value % 255) as u8);
+                } else {
+                    tape.add((value % 255) as u8);
+                }
+            },
+        }
+        io::stdout().flush().unwrap();
+        i+=1;
+    }
+
+}
+
+arguments!{
+    Data,
+    "brainf [file.bf]",
+    file: PathBuf => 1,
 }
 
 fn main() {
@@ -201,58 +259,5 @@ fn main() {
             _ => {},
         }
     }
-
-    let mut tape = Tape::new();
-    let mut i = 0;
-    while i < tokens.len() {
-        let token = &tokens[i];
-        match token.token_type {
-            TokenType::JZ => {
-                if tape.get() == 0 {
-                    i = token.value as usize; 
-                }
-            },
-            TokenType::NZ => {
-                if tape.get() != 0 {
-                    i = token.value as usize;
-                }
-            },
-            TokenType::Out => {
-                print!("{}",  tape.get() as char);
-            },
-            TokenType::In => {
-                let mut s = String::new();
-                println!("");
-                stdin().read_line(&mut s).expect("Did not enter a correct string");
-                let c = s.chars().collect::<Vec<char>>()[0];
-                tape.write(c as u8); 
-            },
-            TokenType::Shift => {
-                if token.value < 0 {
-                    tape.ls(token.value.abs() as usize);
-                } else {
-                    tape.rs(token.value as usize);
-                }
-            },
-            TokenType::Math => {
-                let sub = token.value < 0;
-                let value = token.value.abs();
-                let amount = (value as f32 / 255.0).floor() as i32;
-                for _ in 0..amount {
-                    if sub {
-                        tape.sub(255);
-                    } else {
-                        tape.add(255);
-                    }
-                }
-                if sub {
-                    tape.sub((value % 255) as u8);
-                } else {
-                    tape.add((value % 255) as u8);
-                }
-            },
-        }
-        io::stdout().flush().unwrap();
-        i+=1;
-    }
+    interpret(tokens);
 }
